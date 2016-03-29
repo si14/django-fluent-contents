@@ -150,8 +150,8 @@ class ContentPlugin(with_metaclass(PluginMediaDefiningClass, object)):
     In case the plugin needs to output content dynamically, include ``cache_output = False`` in the plugin definition.
     """
 
-    # False by default, only explictly enabled on new container objects.
-    _can_have_children = False
+    # False by default, only explicitly enabled on new container objects.
+    can_have_children = False
 
     #: .. versionadded:: 1.1
     #:    Category for media
@@ -599,7 +599,7 @@ class ContainerPlugin(ContentPlugin):
     #: Default category is set to container
     category = ContentPlugin.CONTAINER
 
-    _can_have_children = True
+    can_have_children = True
 
 
 class HttpRedirectRequest(Exception):
