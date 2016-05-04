@@ -18,6 +18,7 @@ BASE_FIELDS = (
     'placeholder',
     'placeholder_slot',
     'parent_item',
+    'parent_item_uid',
     'sort_order',
 )
 
