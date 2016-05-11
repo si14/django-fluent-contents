@@ -1,6 +1,14 @@
 Changelog
 =========
 
+Changes in 1.1.3 (2016-05-11)
+-----------------------------
+
+* Fixed ``{% csrf_token %}`` support in plugin templates.
+* Fixed django-debug-toolbar_ support for skipped items.
+* Fixed error handling of missing content items in the database.
+
+
 Changes in 1.1.2 (2016-03-25)
 -----------------------------
 
@@ -22,6 +30,7 @@ Changes in 1.1 (2015-12-29)
 * Added django-debug-toolbar_ panel: ``fluent_contents.panels.ContentPluginPanel'``.
 * Added ``Placeholder.get_search_text()`` API for full text indexing support.
 * Added ``FLUENT_TEXT_POST_FILTERS`` and ``FLUENT_TEXT_PRE_FILTERS`` to the text plugin for further processing of the text.
+* **BACKWARDS INCOMPATIBLE:** as text filters became global, the settings in :mod:`fluent_contents.plugins.text.appsettings` moved to :mod:`fluent_contents.appsettings`.
 * Dropped Django 1.4 support
 
 
