@@ -1,28 +1,18 @@
-from pprint import pformat
-from django.conf import settings
-from django.contrib.admin import AdminSite
-from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.messages.middleware import MessageMiddleware
-from django.core.urlresolvers import reverse
-from django.test import RequestFactory
 from fluent_contents.models import Placeholder
 from fluent_contents.tests.testapp.admin import PlaceholderFieldTestPageAdmin
 from fluent_contents.tests.testapp.models import PlaceholderFieldTestPage, RawHtmlTestItem
-from fluent_contents.tests.utils import AppTestCase, override_settings
+from fluent_contents.tests.utils import AdminTestCase, override_settings
 
 
-class AdminTest(AppTestCase):
+class AdminTest(AdminTestCase):
     """
     Test the admin functions.
     """
+    model = PlaceholderFieldTestPage
+    admin_class = PlaceholderFieldTestPageAdmin
 
     def setUp(self):
-        # Admin objects for all tests.
-        self.factory = RequestFactory()
-        self.admin_site = AdminSite()
-        self.admin_user = User.objects.get(is_superuser=True)
-
         self.settings = override_settings(
             MIDDLEWARE_CLASSES = (
                 'django.middleware.common.CommonMiddleware',
@@ -41,14 +31,10 @@ class AdminTest(AppTestCase):
         """
         Test adding an object with placeholder field via the admin.
         """
-        self.admin_site.register(PlaceholderFieldTestPage, PlaceholderFieldTestPageAdmin)
-        modeladmin = self.admin_site._registry[PlaceholderFieldTestPage]
-
         # Get all post data.
         # Includes all inlines, so all inline formsets of other plugins will be added (with TOTAL_FORMS 0)
         contents_slot = PlaceholderFieldTestPage.contents.slot
-        formdata = self._get_management_form_data(modeladmin)
-        formdata.update({
+        formdata = {
             'title': 'TEST1',
             'placeholder-fs-TOTAL_FORMS': '1',
             'placeholder-fs-MAX_NUM_FORMS': '',   # Needed for Django <= 1.4.3
@@ -63,11 +49,10 @@ class AdminTest(AppTestCase):
             'contentitem-0-placeholder_slot': contents_slot,   # BaseContentItemFormSet resolves the placeholder after it's created
             'contentitem-0-sort_order': '1',
             'contentitem-0-html': u'<b>foo</b>',
-        })
+        }
 
         # Make a POST to the admin page.
-        response = self._post_add(modeladmin, formdata)
-        self.assertEqual(response.status_code, 302, "No redirect, received:\n\n{0}".format(self._render_response(response)))
+        self.admin_post_add(formdata)
 
         # Check that the page exists.
         page = PlaceholderFieldTestPage.objects.get(title='TEST1')
@@ -88,59 +73,6 @@ class AdminTest(AppTestCase):
         # Also check reverse relation of placeholder
         rawhtmltestitem = placeholder.contentitems.all()[0]
         self.assertEqual(rawhtmltestitem.html, u'<b>foo</b>')
-
-    def _post_add(self, modeladmin, formdata):
-        opts = modeladmin.opts
-        url = reverse('admin:{0}_{1}_add'.format(*_get_url_format(opts)))
-
-        # Build request
-        formdata['csrfmiddlewaretoken'] = 'foo'
-        request = self.factory.post(url, data=formdata)
-        request.COOKIES[settings.CSRF_COOKIE_NAME] = 'foo'
-
-        # Add properties which middleware would typically do
-        request.session = {}
-        request.user = self.admin_user
-        MessageMiddleware().process_request(request)
-
-        # Make a direct call, circumvents login page.
-        return modeladmin.add_view(request)
-
-    def _get_management_form_data(self, modeladmin):
-        """
-        Return the formdata that the management forms need.
-        """
-        opts = modeladmin.opts
-        url = reverse('admin:{0}_{1}_add'.format(*_get_url_format(opts)))
-        request = self.factory.get(url)
-        request.user = self.admin_user
-
-        if hasattr(modeladmin, 'get_inline_instances'):
-            inline_instances = modeladmin.get_inline_instances(request)  # Django 1.4
-        else:
-            inline_instances = [inline_class(modeladmin.model, self.admin_site) for inline_class in modeladmin.inlines]
-
-        forms = []
-        for inline_instance in inline_instances:
-            FormSet = inline_instance.get_formset(request)
-            formset = FormSet(instance=modeladmin.model())
-            forms.append(formset.management_form)
-
-        # In a primitive way, get the form fields.
-        # This is not exactly the same as a POST, since that runs through clean()
-        formdata = {}
-        for form in forms:
-            for boundfield in form:
-                formdata[boundfield.html_name] = boundfield.value()
-
-        return formdata
-
-    def _render_response(self, response):
-        if hasattr(response, 'render'):
-            # TemplateResponse
-            return u"== Context ==\n{0}\n\n== Response ==\n{1}".format(pformat(response.context_data), response.render().content)
-        else:
-            return response.content
 
 
 def _get_url_format(opts):
