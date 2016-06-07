@@ -152,7 +152,7 @@ class AdminTestCase(AppTestCase):
         """
         Perform a GET request on the admin page
         """
-        request = self.create_admin_request('post', self.get_change_url(object_id), data=query, **extra)
+        request = self.create_admin_request('get', self.get_change_url(object_id), data=query, **extra)
         response = self.admin_instance.change_view(request, str(object_id))
         self.assertEqual(response.status_code, 200)
         return response

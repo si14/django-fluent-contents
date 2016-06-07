@@ -1,7 +1,9 @@
 from django.contrib.contenttypes.models import ContentType
+from django.utils import six
+
 from fluent_contents.models import Placeholder
 from fluent_contents.tests.testapp.admin import PlaceholderFieldTestPageAdmin
-from fluent_contents.tests.testapp.models import PlaceholderFieldTestPage, RawHtmlTestItem
+from fluent_contents.tests.testapp.models import PlaceholderFieldTestPage, RawHtmlTestItem, TimeoutTestItem
 from fluent_contents.tests.utils import AdminTestCase, override_settings
 
 
@@ -73,6 +75,83 @@ class AdminTest(AdminTestCase):
         # Also check reverse relation of placeholder
         rawhtmltestitem = placeholder.contentitems.all()[0]
         self.assertEqual(rawhtmltestitem.html, u'<b>foo</b>')
+
+    def test_change_page(self):
+        """
+        Testing how the change page works
+        """
+        # Create item outside Django admin
+        slot = PlaceholderFieldTestPage.contents.slot
+        page = PlaceholderFieldTestPage.objects.create(title='TEST2')
+        placeholder = Placeholder.objects.create_for_object(page, slot, role='m')
+        item1 = RawHtmlTestItem.objects.create_for_placeholder(placeholder, language_code='en', html='<b>foo</b>')
+
+        # Fetch the page
+        response = self.admin_get_change(page.pk)
+
+        # Collect all existing inputs
+        formdata = {}
+        formdata.update(response.context_data['adminform'].form.initial)
+        for inline_admin_formset in response.context_data['inline_admin_formsets']:
+            for boundfield in inline_admin_formset.formset.management_form:
+                formdata[boundfield.html_name] = boundfield.value()
+
+            for form in inline_admin_formset.formset.forms:
+                for boundfield in form:
+                    formdata[boundfield.html_name] = boundfield.value()
+
+        self.assertEqual(formdata, {
+            'title': u'TEST2',
+            'contents': 1,
+            'placeholder-fs-INITIAL_FORMS': 1,
+            'placeholder-fs-MIN_NUM_FORMS': 0,
+            'placeholder-fs-MAX_NUM_FORMS': 1000,
+            'placeholder-fs-TOTAL_FORMS': 1,
+            'placeholder-fs-0-DELETE': None,
+            'placeholder-fs-0-id': placeholder.pk,
+            'placeholder-fs-0-role': u'm',
+            'placeholder-fs-0-slot': u'field_slot1',
+            'placeholder-fs-0-title': u'Field Slot1',
+            'contentitem-INITIAL_FORMS': 1,
+            'contentitem-TOTAL_FORMS': 1,
+            'contentitem-MIN_NUM_FORMS': 0,
+            'contentitem-MAX_NUM_FORMS': 1000,
+            'contentitem-0-DELETE': None,
+            'contentitem-0-html': u'<b>foo</b>',
+            'contentitem-0-id': item1.pk,
+            'contentitem-0-parent_item': None,
+            'contentitem-0-parent_item_uid': 1,
+            'contentitem-0-placeholder': 1,
+            'contentitem-0-placeholder_slot': None,
+            'contentitem-0-polymorphic_ctype': item1.polymorphic_ctype_id,
+            'contentitem-0-sort_order': 1,
+        })
+
+        # Update the items, adding a new one
+        formdata.update({
+            'contentitem-TOTAL_FORMS': 2,
+            'contentitem-1-html': u'<b>bar</b>',
+            'contentitem-1-id': None,
+            'contentitem-1-parent_item': None,
+            'contentitem-1-parent_item_uid': 1,
+            'contentitem-1-placeholder': None,
+            'contentitem-1-placeholder_slot': slot,
+            'contentitem-1-polymorphic_ctype': ContentType.objects.get_for_model(TimeoutTestItem).pk,
+            'contentitem-1-sort_order': 2,
+        })
+
+        for key, value in six.iteritems(formdata):
+            if value is None:
+                formdata[key] = ''
+
+        response = self.admin_post_change(page.pk, formdata)
+
+        # Must have created two items
+        self.assertEqual([item.html for item in placeholder.contentitems.all()], [u'<b>foo</b>', u'<b>bar</b>'])
+        item2 = placeholder.contentitems.all()[1]
+        self.assertEqual(item2.placeholder, placeholder)
+        self.assertEqual(item2.parent, page)
+        self.assertEqual(item2.html, u'<b>bar</b>')
 
 
 def _get_url_format(opts):
