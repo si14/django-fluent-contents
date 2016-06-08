@@ -4,9 +4,9 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import Truncator
 from django.utils.translation import ugettext_lazy as _
-from polymorphic.manager import PolymorphicManager
+
 from fluent_contents.forms import ContentItemForm
-from fluent_contents.models import ContentItem
+from fluent_contents.models import ContentItem, ContentItemManager
 from fluent_contents.plugins.markup import appsettings, backend
 
 LANGUAGE_MODEL_CLASSES = {}
@@ -50,13 +50,13 @@ class MarkupItem(ContentItem):
     def __init__(self, *args, **kwargs):
         super(MarkupItem, self).__init__(*args, **kwargs)
 
-        # Extra polymorphic!
+        # Extra polymorphic, in case the base class content ID was stored.
         ProxyModelClass = LANGUAGE_MODEL_CLASSES.get(self.language, None)
         if ProxyModelClass:
             self.__class__ = ProxyModelClass
 
 
-class MarkupLanguageManager(PolymorphicManager):
+class MarkupLanguageManager(ContentItemManager):
 
     def __init__(self, fixed_language):
         super(MarkupLanguageManager, self).__init__()
@@ -97,7 +97,6 @@ def _create_markup_model(fixed_language):
     })
 
     # Make easily browsable
-    LANGUAGE_MODEL_CLASSES[fixed_language] = new_class
     return new_class
 
 
@@ -108,6 +107,6 @@ for language in list(backend.SUPPORTED_LANGUAGES.keys()):
     if language not in appsettings.FLUENT_MARKUP_LANGUAGES:
         continue
 
-    new_class = _create_markup_model(language)
+    LANGUAGE_MODEL_CLASSES[language] = _create_markup_model(language)
     #globals()[new_class.__name__] = new_class
     #__all__.append(new_class.__name__)
