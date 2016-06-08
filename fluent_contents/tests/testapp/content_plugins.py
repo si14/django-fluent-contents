@@ -1,6 +1,6 @@
 from django.utils.safestring import mark_safe
-from fluent_contents.extensions import ContentPlugin, plugin_pool
-from fluent_contents.tests.testapp.models import RawHtmlTestItem, TimeoutTestItem
+from fluent_contents.extensions import ContentPlugin, ContainerPlugin, plugin_pool
+from fluent_contents.tests.testapp.models import RawHtmlTestItem, TimeoutTestItem, ContainerTestItem
 
 
 @plugin_pool.register
@@ -28,3 +28,12 @@ class TimeoutTestPlugin(ContentPlugin):
     def get_render_template(self, request, instance, **kwargs):
         # This is for test_debug_is_method_overwritten()
         return super(TimeoutTestPlugin, self).get_render_template(request, instance, **kwargs)
+
+
+@plugin_pool.register
+class ContainerTestPlugin(ContainerPlugin):
+    """
+    Testing a plugin timeout.
+    """
+    model = ContainerTestItem
+    render_template = "testapp/containeritem.html"

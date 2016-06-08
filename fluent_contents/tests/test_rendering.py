@@ -5,8 +5,10 @@ from fluent_contents import rendering
 from fluent_contents.extensions import PluginContext
 from fluent_contents.models import Placeholder, DEFAULT_TIMEOUT
 from fluent_contents.rendering import utils as rendering_utils
-from fluent_contents.tests.testapp.models import TestPage, RawHtmlTestItem, TimeoutTestItem, OverrideBase
-from fluent_contents.tests.utils import AppTestCase
+from fluent_contents.tests.factories import create_placeholder, create_content_item
+from fluent_contents.tests.testapp.models import TestPage, RawHtmlTestItem, TimeoutTestItem, OverrideBase, \
+    ContainerTestItem
+from fluent_contents.tests.utils import AppTestCase, render_content_items
 
 
 class RenderingTests(AppTestCase):
@@ -68,3 +70,28 @@ class RenderingTests(AppTestCase):
         self.assertTrue(context.get('csrf_token', None), 'csrf_token not found in context')
         self.assertNotEqual(str(context['csrf_token']), 'NOTPROVIDED', 'csrf_token is NOTPROVIDED')
         self.assertTrue('TEST1TEST2' in template.render(context), 'csrf_token not found in template')
+
+    def test_render_children(self):
+        """
+        Test that rendering items in items works
+        """
+        placeholder = create_placeholder()
+        root = create_content_item(ContainerTestItem, placeholder=placeholder, tag='section')
+        col1 = create_content_item(ContainerTestItem, placeholder=placeholder, parent_item=root, tag='div', css_class='col1')
+        col2 = create_content_item(ContainerTestItem, placeholder=placeholder, parent_item=root, tag='div', css_class='col2')
+        item = create_content_item(RawHtmlTestItem, placeholder=placeholder, parent_item=col1, html='AAA')
+
+        # Auto fetch contents
+        #with self.assertNumQueries(5):  # 2 extra due to polymorphic bug now.
+        self.assertHTMLEqual(
+            render_content_items([root]).html,
+            '<section><div class="col1">AAA</div><div class="col2"></div></section>'
+        )
+
+        # Reconstruct the tree from the complete list
+        # Need to fetch the list + 2 item types.
+        with self.assertNumQueries(3):
+            self.assertHTMLEqual(
+                render_content_items(placeholder.get_content_items()).html,
+                '<section><div class="col1">AAA</div><div class="col2"></div></section>'
+            )
