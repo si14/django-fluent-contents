@@ -4,7 +4,6 @@ import django
 from django.conf import settings
 from django.conf.urls import url
 from django.contrib.admin import ModelAdmin
-from django.contrib.admin.helpers import InlineAdminFormSet
 from django.core.exceptions import ImproperlyConfigured
 from django.db.models import signals
 from django.dispatch import receiver
@@ -13,11 +12,11 @@ from django.template.loader import render_to_string
 from django.utils import translation
 from django.utils.functional import curry
 from fluent_utils.ajax import JsonResponse
+from polymorphic.admin import PolymorphicInlineSupportMixin, PolymorphicInlineAdminFormSet
 
 from fluent_contents import extensions
 from fluent_contents.admin.contentitems import get_content_item_inlines, BaseContentItemFormSet
 from fluent_contents.admin.genericextensions import BaseInitialGenericInlineFormSet
-from polymorphic.admin import PolymorphicInlineSupportMixin
 from fluent_contents.models import Placeholder
 from fluent_contents.models.managers import get_parent_active_language_choices
 
@@ -294,7 +293,8 @@ class PlaceholderEditorAdmin(PlaceholderEditorBaseMixin, PolymorphicInlineSuppor
         readonly = list(inline.get_readonly_fields(request, obj))
         prepopulated = dict(inline.get_prepopulated_fields(request, obj))
         inline.extra = 0
-        inline_admin_formset = InlineAdminFormSet(inline, formset, fieldsets, prepopulated, readonly, model_admin=self)
+        inline_admin_formset = PolymorphicInlineAdminFormSet(inline, formset, fieldsets, prepopulated, readonly,
+                                                             model_admin=self, request=request, obj=obj)
 
         form_data = []
         for i, inline_admin_form in enumerate(inline_admin_formset):
@@ -302,7 +302,7 @@ class PlaceholderEditorAdmin(PlaceholderEditorBaseMixin, PolymorphicInlineSuppor
                 continue
 
             # exactly what admin/fluent_contents/contentitem/inline_container.html does:
-            template_name = inline_admin_formset.opts.cp_admin_form_template
+            template_name = inline_admin_form.model_admin.cp_admin_form_template
             context = {
                 'inline_admin_form': inline_admin_form,
                 'inline_admin_formset': inline_admin_formset,
@@ -326,8 +326,8 @@ class PlaceholderEditorAdmin(PlaceholderEditorBaseMixin, PolymorphicInlineSuppor
                 'placeholder_id': contentitem.placeholder_id,
                 'placeholder_slot': placeholder_slots[contentitem.placeholder_id],
                 'html': form_html,
-                'plugin': inline.plugin.__class__.__name__,
-                'model': inline.model.__name__,
+                'plugin': inline_admin_form.model_admin.plugin.__class__.__name__,
+                'model': inline_admin_form.model_admin.type_name,
                 'prefix': formset.add_prefix(i),
             })
         return form_data
