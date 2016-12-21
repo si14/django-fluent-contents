@@ -1,6 +1,6 @@
 from future.utils import python_2_unicode_compatible
 from django.db import models
-from fluent_contents.models import ContentItem, PlaceholderField, PlaceholderRelation, ContentItemRelation
+from fluent_contents.models import ContentItem, ContainerItem, PlaceholderField, PlaceholderRelation, ContentItemRelation, get_parent_language_code
 
 
 class OverrideBase(object):
@@ -34,6 +34,10 @@ class PlaceholderFieldTestPage(models.Model):
     title = models.CharField(max_length=200)
     contents = PlaceholderField("field_slot1")
 
+    # The language code is editable for testing.
+    # This attribute is read by
+    language_code = models.CharField(max_length=10, default='en')
+
     placeholder_set = PlaceholderRelation()
     contentitem_set = ContentItemRelation()
 
@@ -44,6 +48,8 @@ class PlaceholderFieldTestPage(models.Model):
 
     def __str__(self):
         return self.title
+
+assert get_parent_language_code(PlaceholderFieldTestPage(language_code='nl')) == 'nl'
 
 
 @python_2_unicode_compatible
@@ -108,3 +114,20 @@ class RedirectTestItem(ContentItem):
 
     def __str__(self):
         return self.html
+
+
+@python_2_unicode_compatible
+class ContainerTestItem(ContainerItem):
+    """
+    The most basic "raw HTML" content item, for testing.
+    """
+    tag = models.CharField(max_length=20)
+    css_class = models.CharField(max_length=200)
+
+    class Meta:
+        app_label = 'testapp'
+        verbose_name = 'Container test'
+        verbose_name_plural = 'Container test'
+
+    def __str__(self):
+        return self.tag
