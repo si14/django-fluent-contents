@@ -472,7 +472,7 @@ var cp_plugins = {};
     total.value++;
 
     // Configure it
-    cp_plugins._set_pageitem_data($fs_item, placeholder, new_index, parent_item, true);
+    cp_plugins._set_pageitem_data($fs_item, placeholder, new_index);
     cp_plugins.enable_pageitem($fs_item, false);
     cp_plugins.update_sort_order(pane);  // Not required, but keep the form state consistent all the time.
     if(options.on_post_add) options.on_post_add($fs_item);
