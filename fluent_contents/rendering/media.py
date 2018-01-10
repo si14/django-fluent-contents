@@ -11,7 +11,7 @@ def register_frontend_media(request, media):
     if not hasattr(request, '_fluent_contents_frontend_media'):
         request._fluent_contents_frontend_media = Media()
 
-    add_media(request._fluent_contents_frontend_media, media)
+    request._fluent_contents_frontend_media += media
 
 
 def get_frontend_media(request):

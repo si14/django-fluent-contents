@@ -381,7 +381,7 @@ class RenderingPipe(object):
                 html_output.append(mark_safe(u'<!-- error: {0} -->\n'.format(str(output))))
             else:
                 html_output.append(output.html)
-                add_media(merged_media, output.media)
+                merged_media += output.media
 
         return html_output, merged_media
 
